@@ -1,1 +1,186 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WireGuard4582 Panel Maker</title>
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#090b18;color:#fff;
+ font-family:Tahoma,Arial,sans-serif;padding:20px
+}
+.box{
+ max-width:480px;margin:30px auto;background:#11152a;
+ border:1px solid #6848ff;border-radius:20px;
+ padding:24px;box-shadow:0 0 25px #6040ff30
+}
+h2{text-align:center;color:#a995ff}
+input,button{
+ width:100%;padding:14px;margin:9px 0;
+ border-radius:10px;border:1px solid #5142a0;
+ background:#090d20;color:white;font-size:15px
+}
+input[type=file]{background:#171b35}
+button{
+ background:linear-gradient(90deg,#5538ff,#1679ff);
+ border:0;font-weight:bold;cursor:pointer
+}
+button:disabled{opacity:.5}
+.status{text-align:center;color:#b6a8ff;font-size:13px}
+</style>
+</head>
+<body>
 
+<div class="box">
+<h2>🎮 WireGuard4582</h2>
+<p class="status">ساخت پنل وایرگارد</p>
+
+<label>فایل کانفیگ وایرگارد (.conf)</label>
+<input id="conf" type="file" accept=".conf,.txt">
+
+<label>نام پنل</label>
+<input id="name" placeholder="نام پنل را وارد کنید">
+
+<label>رمز ورود پنل</label>
+<input id="pass" type="password" placeholder="رمز دلخواه">
+
+<button onclick="makePanel()">ساخت و دانلود پنل</button>
+<p id="status" class="status">ابتدا فایل کانفیگ را انتخاب کن.</p>
+</div>
+
+<script>
+async function makePanel(){
+ const file=document.getElementById("conf").files[0];
+ const name=document.getElementById("name").value.trim();
+ const password=document.getElementById("pass").value;
+ const status=document.getElementById("status");
+
+ if(!file){
+   status.textContent="ابتدا فایل کانفیگ را انتخاب کن.";
+   return;
+ }
+ if(!name || !password){
+   status.textContent="نام پنل و رمز را وارد کن.";
+   return;
+ }
+
+ if(file.size>1024*1024){
+   status.textContent="حجم فایل باید کمتر از ۱ مگابایت باشد.";
+   return;
+ }
+
+ status.textContent="در حال ساخت پنل...";
+
+ try{
+   const config=await file.text();
+
+   if(!config.includes("[Interface]")){
+     status.textContent="فایل انتخاب‌شده کانفیگ معتبر وایرگارد نیست.";
+     return;
+   }
+
+   const panelHTML=`<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHTML(name)}</title>
+<style>
+*{box-sizing:border-box}
+body{
+ background:#080b18;color:white;font-family:Tahoma,Arial,sans-serif;
+ padding:20px;margin:0
+}
+.box{
+ max-width:460px;margin:35px auto;padding:24px;
+ background:#12162b;border:1px solid #7355ff;
+ border-radius:20px;box-shadow:0 0 25px #6545ff25
+}
+h2{text-align:center;color:#a995ff}
+input,button,textarea{
+ width:100%;padding:13px;margin:8px 0;border-radius:10px;
+ border:1px solid #5142a0;background:#090d20;color:white
+}
+button{
+ background:linear-gradient(90deg,#5538ff,#1679ff);
+ border:0;font-weight:bold;cursor:pointer
+}
+textarea{height:180px;resize:vertical;direction:ltr}
+.hidden{display:none}
+.note{color:#b6a8ff;font-size:12px;text-align:center}
+</style>
+</head>
+<body>
+<div class="box" id="login">
+<h2>${escapeHTML(name)}</h2>
+<input id="pw" type="password" placeholder="رمز ورود پنل">
+<button onclick="login()">ورود به پنل</button>
+<p id="err" class="note"></p>
+</div>
+
+<div class="box hidden" id="panel">
+<h2>${escapeHTML(name)}</h2>
+<textarea id="config" readonly></textarea>
+<button onclick="copyConfig()">کپی کانفیگ</button>
+<button onclick="downloadConfig()">دانلود فایل کانفیگ</button>
+<p id="msg" class="note"></p>
+</div>
+
+<script>
+const panelPassword=${JSON.stringify(password)};
+const embeddedConfig=${JSON.stringify(config)};
+
+function login(){
+ if(document.getElementById('pw').value===panelPassword){
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('panel').classList.remove('hidden');
+  document.getElementById('config').value=embeddedConfig;
+ }else{
+  document.getElementById('err').textContent='رمز اشتباه است.';
+ }
+}
+function copyConfig(){
+ const t=document.getElementById('config');
+ t.select();
+ if(navigator.clipboard && window.isSecureContext){
+  navigator.clipboard.writeText(t.value).then(()=>show('کپی شد.'));
+ }else{
+  document.execCommand('copy');show('کپی شد.');
+ }
+}
+function downloadConfig(){
+ const blob=new Blob([embeddedConfig],{type:'text/plain'});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');
+ a.href=url;a.download='WireGuard4582.conf';a.click();
+ URL.revokeObjectURL(url);
+ show('فایل کانفیگ دانلود شد.');
+}
+function show(t){document.getElementById('msg').textContent=t;}
+<\/script>
+</body>
+</html>`;
+
+   const blob=new Blob([panelHTML],{type:"text/html;charset=utf-8"});
+   const url=URL.createObjectURL(blob);
+   const a=document.createElement("a");
+   a.href=url;
+   a.download="WireGuard4582_Panel.html";
+   a.click();
+   URL.revokeObjectURL(url);
+   status.textContent="پنل ساخته شد و دانلود آن شروع شد.";
+ }catch(e){
+   status.textContent="ساخت پنل ناموفق بود.";
+ }
+}
+
+function escapeHTML(s){
+ return s.replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",
+  '"':"&quot;","'":"&#39;"
+ }[c]));
+}
+</script>
+</body>
+  </html>
